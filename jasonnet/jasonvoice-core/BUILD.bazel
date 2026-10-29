@@ -1,0 +1,13 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary")
+load("@crate_index//:defs.bzl", "all_crate_deps")
+
+rust_binary(
+    name = "jasonvoice_core",
+    srcs = glob(["src/**/*.rs"]),
+    edition = "2021",
+    crate_root = "src/main.rs",
+    deps = all_crate_deps(
+        package_name = "jasonvoice-core",
+    ),
+    visibility = ["//visibility:public"],
+)

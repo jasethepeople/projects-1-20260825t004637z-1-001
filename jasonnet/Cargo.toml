@@ -1,0 +1,7 @@
+[workspace]
+members = [
+  "jasoncomms-core",
+  "jasonradio-core",
+  "jasonvoice-core",
+]
+resolver = "2"

@@ -1,0 +1,4 @@
+# Root build file for jasonnet monorepo
+# bazel run //jasoncomms-core:jasoncomms_core
+# bazel run //jasonradio-core:jasonradio_core
+# bazel run //jasonvoice-core:jasonvoice_core

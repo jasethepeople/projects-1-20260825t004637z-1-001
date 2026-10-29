@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hangar — Ops Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0b0e12;
+    --panel: #14181d;
+    --panel-2: #191e24;
+    --border: #262b33;
+    --border-lit: #3a4250;
+    --text: #e8e6e1;
+    --text-dim: #8b93a1;
+    --amber: #f2a93b;
+    --cyan: #6fd3c7;
+    --red: #e5533d;
+    --offline: #4a5160;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background: radial-gradient(1200px 800px at 50% -10%, #12161c 0%, var(--bg) 55%);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+
+  /* faint scanline / vignette overlay, purely atmospheric */
+  body::before{
+    content:"";
+    position:fixed; inset:0; pointer-events:none; z-index:50;
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px),
+      radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.45) 100%);
+  }
+
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 22px clamp(16px, 4vw, 48px) 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .wordmark{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:800;
+    font-size: clamp(28px, 5vw, 42px);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text);
+    display:flex; align-items:baseline; gap:10px;
+  }
+  .wordmark small{
+    font-family:'JetBrains Mono', monospace;
+    font-weight:500;
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+  }
+
+  .radar-wrap{ display:flex; align-items:center; gap:18px; }
+  .radar{
+    position:relative; width:56px; height:56px; border-radius:50%;
+    border:2px solid var(--border-lit);
+    background: repeating-radial-gradient(circle, rgba(111,211,199,0.05) 0 2px, transparent 2px 8px);
+    overflow:hidden;
+  }
+  .radar::after{
+    content:"";
+    position:absolute; inset:0;
+    background: conic-gradient(from 0deg, transparent 0deg, transparent 300deg, var(--sweep, var(--cyan)) 350deg, transparent 360deg);
+    animation: sweep 3.2s linear infinite;
+  }
+  .radar-dot{
+    position:absolute; width:5px; height:5px; border-radius:50%;
+    background: var(--sweep, var(--cyan));
+    top:50%; left:50%; transform:translate(-50%,-50%);
+    box-shadow: 0 0 8px 1px var(--sweep, var(--cyan));
+  }
+  @keyframes sweep{ to{ transform: rotate(360deg); } }
+
+  .fleet-status{ font-size:12px; letter-spacing:.08em; color:var(--text-dim); text-align:right; line-height:1.6; }
+  .fleet-status b{ color: var(--text); font-size:15px; letter-spacing:.02em; }
+
+  main{ padding: 28px clamp(16px, 4vw, 48px) 60px; max-width: 1180px; margin: 0 auto; }
+
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+    margin-top: 6px;
+  }
+
+  .card{
+    background: linear-gradient(180deg, var(--panel-2), var(--panel));
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px 20px 16px;
+    position:relative;
+    transition: border-color .3s ease;
+  }
+  .card::before{
+    /* rivet corners — nod to the hangar-panel motif */
+    content:"";
+    position:absolute; inset:6px;
+    border: 1px solid rgba(255,255,255,0.02);
+    border-radius: 4px;
+    pointer-events:none;
+  }
+  .card.alert{ border-color: rgba(229,83,61,0.55); }
+  .card.warn{ border-color: rgba(242,169,59,0.4); }
+
+  .card-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .agent-name{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:700; font-size:22px; letter-spacing:.02em;
+    text-transform:uppercase;
+  }
+  .agent-role{ color: var(--text-dim); font-size:11.5px; margin-top:2px; line-height:1.4; max-width: 30ch; }
+
+  .light{
+    width:11px; height:11px; border-radius:50%; margin-top:6px; flex-shrink:0;
+    background: var(--dot, var(--cyan));
+    box-shadow: 0 0 10px 2px var(--dot, var(--cyan));
+  }
+  .light.pulse{ animation: pulse 1.1s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+
+  .message{ margin-top:14px; font-size:13px; color: var(--text); min-height: 18px; }
+
+  .metrics{ display:flex; gap:18px; margin-top:14px; flex-wrap:wrap; }
+  .metric{ display:flex; flex-direction:column; gap:5px; min-width:90px; }
+  .metric-label{ font-size:10px; letter-spacing:.1em; color:var(--text-dim); text-transform:uppercase; }
+  .metric-value{ font-size:15px; font-weight:700; }
+  .bar{ width:100%; height:4px; background:#232830; border-radius:2px; overflow:hidden; }
+  .bar-fill{ height:100%; background: var(--dot, var(--cyan)); border-radius:2px; transition: width .5s ease; }
+
+  .card-foot{ display:flex; align-items:center; justify-content:space-between; margin-top:18px; padding-top:12px; border-top:1px solid var(--border); }
+  .updated{ font-size:10.5px; color:var(--text-dim); letter-spacing:.04em; }
+
+  .toggle{
+    width:38px; height:20px; border-radius:10px; background:#232830; border:1px solid var(--border-lit);
+    position:relative; cursor:pointer; flex-shrink:0;
+  }
+  .toggle::after{
+    content:""; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%;
+    background: var(--offline); transition: all .2s ease;
+  }
+  .toggle.on{ border-color: rgba(111,211,199,0.5); }
+  .toggle.on::after{ left:20px; background: var(--cyan); box-shadow:0 0 6px var(--cyan); }
+
+  .ticker-wrap{
+    margin-top: 34px; border-top:1px solid var(--border); padding-top: 14px;
+    display:flex; gap: 14px; align-items:baseline;
+  }
+  .ticker-label{ font-size:10px; letter-spacing:.15em; color:var(--text-dim); text-transform:uppercase; flex-shrink:0; }
+  .ticker{ font-size:12px; color:var(--text-dim); overflow:hidden; white-space:nowrap; position:relative; flex:1; }
+  .ticker-track{ display:inline-block; padding-left:100%; animation: scroll 22s linear infinite; }
+  .ticker-track span{ margin-right: 48px; color: var(--text); }
+  @keyframes scroll{ from{ transform: translateX(0); } to{ transform: translateX(-100%); } }
+
+  .conn{ font-size:10.5px; letter-spacing:.08em; color: var(--text-dim); }
+  .conn b{ color: var(--cyan); }
+  .conn.down b{ color: var(--red); }
+
+  @media (prefers-reduced-motion: reduce){
+    .radar::after, .light.pulse, .ticker-track{ animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wordmark">HANGAR <small>OPS DECK · LOCAL</small></div>
+  <div class="radar-wrap">
+    <div class="fleet-status" id="fleetStatus">
+      <b id="fleetLine">—</b><br>
+      <span id="connLine" class="conn">connecting…</span>
+    </div>
+    <div class="radar" id="radar"><div class="radar-dot"></div></div>
+  </div>
+</header>
+
+<main>
+  <div class="grid" id="grid"></div>
+
+  <div class="ticker-wrap">
+    <div class="ticker-label">Flight recorder</div>
+    <div class="ticker"><div class="ticker-track" id="tickerTrack"><span>Awaiting first report…</span></div></div>
+  </div>
+</main>
+
+<script>
+const grid = document.getElementById('grid');
+const fleetLine = document.getElementById('fleetLine');
+const connLine = document.getElementById('connLine');
+const fleetStatusEl = document.getElementById('fleetStatus');
+const radar = document.getElementById('radar');
+const tickerTrack = document.getElementById('tickerTrack');
+
+const STATUS_COLOR = {
+  nominal: 'var(--cyan)',
+  warn: 'var(--amber)',
+  alert: 'var(--red)',
+  offline: 'var(--offline)'
+};
+
+let cardsBuilt = false;
+let tickerLog = [];
+
+function fmtMetricLabel(key){
+  return key.replace(/_/g, ' ').replace('pct','%').trim();
+}
+
+function metricMax(key){
+  if(key.includes('pct')) return 100;
+  return null; // no bar for unbounded metrics like ticks/uptime
+}
+
+function render(reports){
+  if(!Array.isArray(reports) || reports.length === 0) return;
+
+  let worst = 'nominal';
+  const order = ['alert','warn','nominal','offline'];
+  reports.forEach(r => { if(order.indexOf(r.status) < order.indexOf(worst)) worst = r.status; });
+
+  fleetLine.textContent = worst === 'nominal' ? 'ALL SYSTEMS NOMINAL' : worst.toUpperCase() + ' — ATTENTION NEEDED';
+  radar.style.setProperty('--sweep', STATUS_COLOR[worst] || 'var(--cyan)');
+
+  if(!cardsBuilt){
+    grid.innerHTML = reports.map(r => cardTemplate(r)).join('');
+    cardsBuilt = true;
+    grid.querySelectorAll('[data-toggle]').forEach(el => {
+      el.addEventListener('click', () => toggleAgent(el.dataset.toggle));
+    });
+  }
+
+  reports.forEach(r => updateCard(r));
+}
+
+function cardTemplate(r){
+  return `
+    <div class="card" id="card-${r.id}">
+      <div class="card-top">
+        <div>
+          <div class="agent-name">${r.name}</div>
+          <div class="agent-role">${r.role}</div>
+        </div>
+        <div class="light" id="light-${r.id}"></div>
+      </div>
+      <div class="message" id="msg-${r.id}"></div>
+      <div class="metrics" id="metrics-${r.id}"></div>
+      <div class="card-foot">
+        <div class="updated" id="updated-${r.id}"></div>
+        <div class="toggle" data-toggle="${r.id}" id="toggle-${r.id}" title="Enable / disable this agent"></div>
+      </div>
+    </div>
+  `;
+}
+
+function updateCard(r){
+  const card = document.getElementById(`card-${r.id}`);
+  if(!card) return;
+  card.classList.remove('alert','warn');
+  if(r.status === 'alert') card.classList.add('alert');
+  if(r.status === 'warn') card.classList.add('warn');
+
+  const light = document.getElementById(`light-${r.id}`);
+  light.style.setProperty('--dot', STATUS_COLOR[r.status]);
+  light.classList.toggle('pulse', r.status === 'alert');
+
+  document.getElementById(`msg-${r.id}`).textContent = r.message;
+
+  const metricsEl = document.getElementById(`metrics-${r.id}`);
+  metricsEl.innerHTML = Object.entries(r.metrics || {}).map(([k,v]) => {
+    const max = metricMax(k);
+    if(max){
+      return `<div class="metric">
+        <div class="metric-label">${fmtMetricLabel(k)}</div>
+        <div class="metric-value">${v}%</div>
+        <div class="bar"><div class="bar-fill" style="width:${Math.min(v,100)}%; background:${STATUS_COLOR[r.status]}"></div></div>
+      </div>`;
+    }
+    return `<div class="metric">
+      <div class="metric-label">${fmtMetricLabel(k)}</div>
+      <div class="metric-value">${v}</div>
+    </div>`;
+  }).join('');
+
+  const t = new Date(r.updated_at);
+  document.getElementById(`updated-${r.id}`).textContent = 'updated ' + t.toLocaleTimeString();
+
+  const toggle = document.getElementById(`toggle-${r.id}`);
+  toggle.classList.toggle('on', r.enabled);
+
+  pushTicker(r);
+}
+
+const lastMsg = {};
+function pushTicker(r){
+  if(lastMsg[r.id] === r.message) return;
+  lastMsg[r.id] = r.message;
+  tickerLog.unshift(`[${r.name}] ${r.message}`);
+  tickerLog = tickerLog.slice(0, 12);
+  tickerTrack.innerHTML = tickerLog.map(m => `<span>${m}</span>`).join('');
+}
+
+async function toggleAgent(id){
+  try{
+    await fetch(`/api/agents/${id}/toggle`, { method: 'POST' });
+  }catch(e){ /* handled by next poll/stream tick */ }
+}
+
+function setConn(ok){
+  connLine.innerHTML = ok ? '<b>● live</b>' : 'reconnecting…';
+  fleetStatusEl.classList.toggle('down', !ok);
+}
+
+// Prefer SSE for real-time push; fall back to polling if it drops.
+function connectStream(){
+  const es = new EventSource('/api/stream');
+  es.onmessage = (e) => {
+    setConn(true);
+    try{ render(JSON.parse(e.data)); }catch(err){}
+  };
+  es.onerror = () => {
+    setConn(false);
+    es.close();
+    setTimeout(connectStream, 2000);
+  };
+}
+
+async function pollOnce(){
+  try{
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    render(data);
+  }catch(e){}
+}
+
+pollOnce();
+connectStream();
+</script>
+</body>
+</html>
